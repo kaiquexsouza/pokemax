@@ -63,7 +63,7 @@ fun PokemonScreen(
 @Composable
 fun PokemonListContent(
     uiState: PokemonUiState,
-    selectedGen: GenerationInfo,
+    selectedGen: GenerationInfo?,
     searchQuery: String,
     onSearchQueryChanged: (String) -> Unit,
     onGenSelected: (GenerationInfo) -> Unit,
@@ -109,7 +109,7 @@ fun PokemonListContent(
                 .padding(bottom = 12.dp)
         ) {
             items(PokemonGenerations.ALL) { gen ->
-                val isSelected = gen.id == selectedGen.id
+                val isSelected = (gen.id == selectedGen?.id)
                 FilterChip(
                     selected = isSelected,
                     onClick = { onGenSelected(gen) },
@@ -137,7 +137,7 @@ fun PokemonListContent(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Resultados da Busca",
+                        text = if (selectedGen != null) "Geração ${selectedGen.name}" else "Todas as Gerações",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold
                     )

@@ -1,11 +1,10 @@
 package com.example.pokemax
 
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-
-import kotlinx.coroutines.awaitAll
 
 class PokemonRepository {
     private val retrofit = Retrofit.Builder()
@@ -15,8 +14,10 @@ class PokemonRepository {
 
     private val apiService = retrofit.create(PokeApiService::class.java)
 
-    suspend fun fetchPokemonListForGen(gen: GenerationInfo, searchQuery: String = ""): List<Pokemon> = coroutineScope {
-        val rawList = apiService.getPokemonList(limit = gen.limit, offset = gen.offset).results
+    suspend fun fetchPokemonListForGen(gen: GenerationInfo?, searchQuery: String = ""): List<Pokemon> = coroutineScope {
+        val limit = gen?.limit ?: 1025
+        val offset = gen?.offset ?: 0
+        val rawList = apiService.getPokemonList(limit = limit, offset = offset).results
 
         // Filter by searchQuery if provided
         val filtered = if (searchQuery.isBlank()) {

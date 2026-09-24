@@ -28,7 +28,7 @@ sealed class PokemonUiState {
     object Loading : PokemonUiState()
     data class Success(
         val pokemonList: List<Pokemon>,
-        val activeGen: GenerationInfo,
+        val activeGen: GenerationInfo?,
         val query: String
     ) : PokemonUiState()
     data class Error(val message: String) : PokemonUiState()
@@ -55,8 +55,8 @@ class PokemonViewModel(
     private val repository: PokemonRepository = PokemonRepository()
 ) : ViewModel() {
 
-    private val _selectedGen = mutableStateOf(PokemonGenerations.ALL.first())
-    val selectedGen: State<GenerationInfo> = _selectedGen
+    private val _selectedGen = mutableStateOf<GenerationInfo?>(PokemonGenerations.ALL.first())
+    val selectedGen: State<GenerationInfo?> = _selectedGen
 
     private val _searchQuery = mutableStateOf("")
     val searchQuery: State<String> = _searchQuery
@@ -77,10 +77,13 @@ class PokemonViewModel(
     }
 
     fun onGenerationSelected(gen: GenerationInfo) {
-        if (_selectedGen.value.id != gen.id) {
+        if (_selectedGen.value?.id == gen.id) {
+            // Se clicar na mesma geração já selecionada, deseleciona e mostra todas
+            _selectedGen.value = null
+        } else {
             _selectedGen.value = gen
-            loadPokemonList()
         }
+        loadPokemonList()
     }
 
     fun onSearchQueryChanged(query: String) {
