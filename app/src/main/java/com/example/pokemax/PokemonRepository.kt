@@ -31,7 +31,6 @@ class PokemonRepository {
             }
         }
 
-        // Fetch details for filtered items to get type badges
         filtered.map { pokemon ->
             async {
                 try {

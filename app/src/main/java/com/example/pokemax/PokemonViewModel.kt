@@ -78,7 +78,6 @@ class PokemonViewModel(
 
     fun onGenerationSelected(gen: GenerationInfo) {
         if (_selectedGen.value?.id == gen.id) {
-            // Se clicar na mesma geração já selecionada, deseleciona e mostra todas
             _selectedGen.value = null
         } else {
             _selectedGen.value = gen
@@ -90,7 +89,7 @@ class PokemonViewModel(
         _searchQuery.value = query
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
-            delay(300) // debounce search
+            delay(300)
             loadPokemonList()
         }
     }
@@ -129,7 +128,6 @@ class PokemonViewModel(
                 val evolutionSteps = if (chain != null) extractEvolutionSteps(chain) else emptyList()
                 val hasEvolution = evolutionSteps.isNotEmpty()
 
-                // Separate moves into damage and support moves (half and half or by index for preview)
                 val allMoves = detail.moves
                 val half = (allMoves.size + 1) / 2
                 val damageMoves = allMoves.take(half)
@@ -158,7 +156,7 @@ class PokemonViewModel(
     fun selectTab(tab: DetailTab) {
         val current = _detailUiState.value
         if (current is PokemonDetailUiState.Success) {
-            // Se a aba for EVOL mas o pokémon não tiver evolução, mantemos em STATS
+
             if (tab == DetailTab.EVOL && !current.data.hasEvolution) {
                 return
             }
