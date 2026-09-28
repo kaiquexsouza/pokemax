@@ -1,5 +1,6 @@
 package com.example.pokemax
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,6 +21,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.pokemax.ui.theme.*
 
 @Composable
 fun PokemonScreen(
@@ -30,7 +32,7 @@ fun PokemonScreen(
     val detailUiState by viewModel.detailUiState
     val moveDetailUiState by viewModel.moveDetailUiState
 
-    Box(modifier = modifier.fillMaxSize()) {
+    PokedexFrameContainer(modifier = modifier) {
         if (detailUiState !is PokemonDetailUiState.Idle) {
             PokemonDetailContent(
                 detailUiState = detailUiState,
@@ -73,30 +75,38 @@ fun PokemonListContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
         Text(
             text = "Pokémax",
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(vertical = 8.dp)
+            color = Color.White,
+            modifier = Modifier.padding(vertical = 4.dp)
         )
 
         OutlinedTextField(
             value = searchQuery,
             onValueChange = onSearchQueryChanged,
-            placeholder = { Text("Search Pokémon by name or number") },
+            placeholder = { Text("Search Pokémon by name or number", color = Color.White.copy(alpha = 0.7f)) },
             leadingIcon = { Text("🔍") },
             trailingIcon = {
                 if (searchQuery.isNotEmpty()) {
                     IconButton(onClick = { onSearchQueryChanged("") }) {
-                        Text("✕")
+                        Text("✕", color = Color.White)
                     }
                 }
             },
             singleLine = true,
             shape = RoundedCornerShape(24.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = PokedexBlueDark.copy(alpha = 0.85f),
+                unfocusedContainerColor = PokedexBlueDark.copy(alpha = 0.75f),
+                focusedBorderColor = PokedexCyanAccent,
+                unfocusedBorderColor = PokedexCyanAccent.copy(alpha = 0.6f),
+                focusedTextColor = Color.White,
+                unfocusedTextColor = Color.White
+            ),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 12.dp)
@@ -113,8 +123,20 @@ fun PokemonListContent(
                 FilterChip(
                     selected = isSelected,
                     onClick = { onGenSelected(gen) },
-                    label = { Text(text = "${gen.name} (${gen.regionName})") },
-                    shape = RoundedCornerShape(16.dp)
+                    label = { Text(text = "${gen.name} (${gen.regionName})", color = Color.White) },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = PokedexCyanAccent,
+                        selectedLabelColor = Color.White,
+                        containerColor = PokedexBlueDark.copy(alpha = 0.75f),
+                        labelColor = Color.White
+                    ),
+                    border = FilterChipDefaults.filterChipBorder(
+                        enabled = true,
+                        selected = isSelected,
+                        borderColor = PokedexCyanAccent.copy(alpha = 0.8f),
+                        selectedBorderColor = PokedexCyanAccent
+                    )
                 )
             }
         }
@@ -125,7 +147,7 @@ fun PokemonListContent(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator()
+                    CircularProgressIndicator(color = Color.White)
                 }
             }
             is PokemonUiState.Success -> {
@@ -139,12 +161,13 @@ fun PokemonListContent(
                     Text(
                         text = if (selectedGen != null) "Geração ${selectedGen.name}" else "Todas as Gerações",
                         fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
                     )
                     Text(
                         text = "${uiState.pokemonList.size} exibidos",
                         fontSize = 14.sp,
-                        color = Color.Gray
+                        color = Color.White.copy(alpha = 0.8f)
                     )
                 }
 
@@ -156,7 +179,7 @@ fun PokemonListContent(
                         Text(
                             text = "Nenhum Pokémon encontrado.",
                             fontSize = 16.sp,
-                            color = Color.Gray
+                            color = Color.White.copy(alpha = 0.8f)
                         )
                     }
                 } else {
@@ -183,7 +206,7 @@ fun PokemonListContent(
                 ) {
                     Text(
                         text = "Erro: ${uiState.message}",
-                        color = MaterialTheme.colorScheme.error,
+                        color = Color.White,
                         textAlign = TextAlign.Center
                     )
                     Spacer(modifier = Modifier.height(16.dp))
@@ -210,7 +233,7 @@ fun PokemonDetailContent(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator()
+                CircularProgressIndicator(color = Color.White)
             }
         }
         is PokemonDetailUiState.Success -> {
@@ -243,6 +266,7 @@ fun PokemonDetailContent(
                                     text = "STATS DE BASE",
                                     fontSize = 18.sp,
                                     fontWeight = FontWeight.Bold,
+                                    color = Color.White,
                                     modifier = Modifier.padding(bottom = 8.dp)
                                 )
                                 pokemon.stats.forEach { statSlot ->
@@ -259,6 +283,7 @@ fun PokemonDetailContent(
                                     text = "Habilidade(s) principal(is)",
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold,
+                                    color = Color.White,
                                     modifier = Modifier.padding(top = 4.dp, bottom = 4.dp)
                                 )
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -278,6 +303,7 @@ fun PokemonDetailContent(
                                         text = "Habilidade(s) oculta(s)",
                                         fontSize = 16.sp,
                                         fontWeight = FontWeight.Bold,
+                                        color = Color.White,
                                         modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
                                     )
                                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -298,18 +324,19 @@ fun PokemonDetailContent(
                                         text = "Ataque(s) de Dano",
                                         fontSize = 16.sp,
                                         fontWeight = FontWeight.Bold,
+                                        color = Color.White,
                                         modifier = Modifier.padding(top = 12.dp, bottom = 6.dp)
                                     )
                                 }
 
                                 items(data.damageMoves) { moveSlot ->
-                                    val moveName = moveSlot.move.name.replace('-', ' ').replaceFirstChar { it.uppercase() }
+                                    val moveName = translateMoveName(moveSlot.move.name)
                                     Card(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .clickable { onMoveClicked(moveSlot.move.name) },
                                         shape = RoundedCornerShape(12.dp),
-                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                                        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.90f))
                                     ) {
                                         Row(
                                             modifier = Modifier
@@ -321,7 +348,8 @@ fun PokemonDetailContent(
                                             Text(
                                                 text = moveName,
                                                 fontSize = 15.sp,
-                                                fontWeight = FontWeight.SemiBold
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = Color.Black
                                             )
                                             Text(
                                                 text = "Ver detalhes →",
@@ -339,18 +367,19 @@ fun PokemonDetailContent(
                                         text = "Ataque(s) de Suporte",
                                         fontSize = 16.sp,
                                         fontWeight = FontWeight.Bold,
+                                        color = Color.White,
                                         modifier = Modifier.padding(top = 12.dp, bottom = 6.dp)
                                     )
                                 }
 
                                 items(data.supportMoves) { moveSlot ->
-                                    val moveName = moveSlot.move.name.replace('-', ' ').replaceFirstChar { it.uppercase() }
+                                    val moveName = translateMoveName(moveSlot.move.name)
                                     Card(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .clickable { onMoveClicked(moveSlot.move.name) },
                                         shape = RoundedCornerShape(12.dp),
-                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                                        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.90f))
                                     ) {
                                         Row(
                                             modifier = Modifier
@@ -362,7 +391,8 @@ fun PokemonDetailContent(
                                             Text(
                                                 text = moveName,
                                                 fontSize = 15.sp,
-                                                fontWeight = FontWeight.SemiBold
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = Color.Black
                                             )
                                             Text(
                                                 text = "Ver detalhes →",
@@ -380,6 +410,7 @@ fun PokemonDetailContent(
                                     text = "CADEIA EVOLUTIVA",
                                     fontSize = 18.sp,
                                     fontWeight = FontWeight.Bold,
+                                    color = Color.White,
                                     modifier = Modifier.padding(bottom = 8.dp)
                                 )
                                 EvolutionChainView(
@@ -399,7 +430,7 @@ fun PokemonDetailContent(
             ) {
                 Text(
                     text = "Erro: ${detailUiState.message}",
-                    color = MaterialTheme.colorScheme.error,
+                    color = Color.White,
                     textAlign = TextAlign.Center
                 )
                 Spacer(modifier = Modifier.height(16.dp))

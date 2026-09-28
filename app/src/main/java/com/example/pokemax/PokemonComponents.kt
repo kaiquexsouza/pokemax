@@ -61,8 +61,8 @@ fun PokemonCard(
             .height(200.dp)
             .clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = typeColor.copy(alpha = 0.18f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.92f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
             modifier = Modifier
@@ -79,7 +79,7 @@ fun PokemonCard(
             ) {
                 Text(
                     text = "#${pokemon.id}",
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
+                    color = Color.DarkGray,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -262,7 +262,7 @@ fun PokemonDetailTabs(
         selectedTabIndex = selectedIndex,
         modifier = modifier.fillMaxWidth(),
         containerColor = Color.Transparent,
-        contentColor = MaterialTheme.colorScheme.primary
+        contentColor = Color.White
     ) {
         availableTabs.forEach { tab ->
             Tab(
@@ -272,7 +272,8 @@ fun PokemonDetailTabs(
                     Text(
                         text = tab.name,
                         fontSize = 16.sp,
-                        fontWeight = if (selectedTab == tab) FontWeight.Bold else FontWeight.Medium
+                        fontWeight = if (selectedTab == tab) FontWeight.Bold else FontWeight.Medium,
+                        color = if (selectedTab == tab) Color.White else Color.White.copy(alpha = 0.7f)
                     )
                 }
             )
@@ -303,7 +304,7 @@ fun StatBar(
             modifier = Modifier.width(70.dp),
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
-            color = Color.Gray
+            color = Color.White.copy(alpha = 0.9f)
         )
 
         Text(
@@ -311,6 +312,7 @@ fun StatBar(
             modifier = Modifier.width(40.dp),
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
+            color = Color.White,
             textAlign = TextAlign.End
         )
 
@@ -323,7 +325,7 @@ fun StatBar(
                 .height(10.dp)
                 .clip(CircleShape),
             color = if (value >= 100) Color(0xFF4CAF50) else barColor,
-            trackColor = Color.LightGray.copy(alpha = 0.3f)
+            trackColor = Color.White.copy(alpha = 0.3f)
         )
     }
 }
@@ -342,7 +344,7 @@ fun EvolutionChainView(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.90f))
             ) {
                 Row(
                     modifier = Modifier
@@ -366,7 +368,8 @@ fun EvolutionChainView(
                         Text(
                             text = step.fromSpeciesName.replaceFirstChar { it.uppercase() },
                             fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
+                            fontSize = 14.sp,
+                            color = Color.Black
                         )
                     }
 
@@ -407,7 +410,8 @@ fun EvolutionChainView(
                         Text(
                             text = step.toSpeciesName.replaceFirstChar { it.uppercase() },
                             fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
+                            fontSize = 14.sp,
+                            color = Color.Black
                         )
                     }
                 }
@@ -459,9 +463,10 @@ fun MoveDetailDialog(
                     }
                     is MoveDetailUiState.Success -> {
                         val move = moveDetailUiState.moveDetail
+                        val movePtName = translateMoveName(move.name)
 
                         Text(
-                            text = move.name.replace('-', ' ').uppercase(),
+                            text = movePtName.uppercase(),
                             fontSize = 22.sp,
                             fontWeight = FontWeight.Bold,
                             textAlign = TextAlign.Center

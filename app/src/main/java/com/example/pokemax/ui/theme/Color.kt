@@ -10,6 +10,14 @@ val Purple40 = Color(0xFF6650a4)
 val PurpleGrey40 = Color(0xFF625b71)
 val Pink40 = Color(0xFF7D5260)
 
+// Pokédex Outer Frame & Display Colors
+val PokedexRedFrame = Color(0xFFE50914)
+val PokedexRedDark = Color(0xFFB70910)
+val PokedexBlueScreen = Color(0xFF3B82F6)
+val PokedexBlueDark = Color(0xFF1E3A8A)
+val PokedexCyanAccent = Color(0xFF38BDF8)
+val PokedexSilverTrim = Color(0xFFF1F5F9)
+
 // Pokémon Type Colors
 val TypeNormal = Color(0xFFA8A77A)
 val TypeFire = Color(0xFFEE8130)

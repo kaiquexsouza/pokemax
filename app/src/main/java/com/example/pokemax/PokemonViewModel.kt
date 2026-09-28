@@ -70,7 +70,7 @@ class PokemonViewModel(
     private val _moveDetailUiState = mutableStateOf<MoveDetailUiState>(MoveDetailUiState.Idle)
     val moveDetailUiState: State<MoveDetailUiState> = _moveDetailUiState
 
-    private var searchJob: Job? = null
+    private var listJob: Job? = null
 
     init {
         loadPokemonList()
@@ -87,25 +87,49 @@ class PokemonViewModel(
 
     fun onSearchQueryChanged(query: String) {
         _searchQuery.value = query
-        searchJob?.cancel()
-        searchJob = viewModelScope.launch {
-            delay(300)
+        listJob?.cancel()
+        listJob = viewModelScope.launch {
+            delay(300) // debounce search
             loadPokemonList()
         }
     }
 
     fun loadPokemonList() {
-        viewModelScope.launch {
-            _uiState.value = PokemonUiState.Loading
-            try {
-                val list = repository.fetchPokemonListForGen(_selectedGen.value, _searchQuery.value)
+        listJob?.cancel()
+        listJob = viewModelScope.launch {
+            // 1. Exibe a lista local instantaneamente em 0 milissegundos
+            val instantList = repository.getInstantLocalList(_selectedGen.value, _searchQuery.value)
+            if (instantList.isNotEmpty()) {
                 _uiState.value = PokemonUiState.Success(
-                    pokemonList = list,
+                    pokemonList = instantList,
                     activeGen = _selectedGen.value,
                     query = _searchQuery.value
                 )
+            } else {
+                _uiState.value = PokemonUiState.Loading
+            }
+
+            try {
+                // 2. Busca e valida na rede em segundo plano
+                val fastList = repository.fetchPokemonListFast(_selectedGen.value, _searchQuery.value)
+                _uiState.value = PokemonUiState.Success(
+                    pokemonList = fastList,
+                    activeGen = _selectedGen.value,
+                    query = _searchQuery.value
+                )
+
+                // 3. Preenche os tipos dos Pokémon em segundo plano
+                repository.enrichPokemonDetailsInBackground(fastList) { updatedList ->
+                    val current = _uiState.value
+                    if (current is PokemonUiState.Success && current.activeGen == _selectedGen.value && current.query == _searchQuery.value) {
+                        _uiState.value = current.copy(pokemonList = updatedList)
+                    }
+                }
             } catch (e: Exception) {
-                _uiState.value = PokemonUiState.Error(e.localizedMessage ?: "Erro ao carregar Pokémon")
+                val current = _uiState.value
+                if (current !is PokemonUiState.Success) {
+                    _uiState.value = PokemonUiState.Error(e.localizedMessage ?: "Erro ao carregar Pokémon")
+                }
             }
         }
     }
@@ -156,7 +180,6 @@ class PokemonViewModel(
     fun selectTab(tab: DetailTab) {
         val current = _detailUiState.value
         if (current is PokemonDetailUiState.Success) {
-
             if (tab == DetailTab.EVOL && !current.data.hasEvolution) {
                 return
             }
