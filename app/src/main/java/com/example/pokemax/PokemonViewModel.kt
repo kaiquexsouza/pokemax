@@ -89,7 +89,7 @@ class PokemonViewModel(
         _searchQuery.value = query
         listJob?.cancel()
         listJob = viewModelScope.launch {
-            delay(300) // debounce search
+            delay(300)
             loadPokemonList()
         }
     }
@@ -97,7 +97,6 @@ class PokemonViewModel(
     fun loadPokemonList() {
         listJob?.cancel()
         listJob = viewModelScope.launch {
-            // 1. Exibe a lista local instantaneamente em 0 milissegundos
             val instantList = repository.getInstantLocalList(_selectedGen.value, _searchQuery.value)
             if (instantList.isNotEmpty()) {
                 _uiState.value = PokemonUiState.Success(
@@ -110,7 +109,6 @@ class PokemonViewModel(
             }
 
             try {
-                // 2. Busca e valida na rede em segundo plano
                 val fastList = repository.fetchPokemonListFast(_selectedGen.value, _searchQuery.value)
                 _uiState.value = PokemonUiState.Success(
                     pokemonList = fastList,
@@ -118,7 +116,6 @@ class PokemonViewModel(
                     query = _searchQuery.value
                 )
 
-                // 3. Preenche os tipos dos Pokémon em segundo plano
                 repository.enrichPokemonDetailsInBackground(fastList) { updatedList ->
                     val current = _uiState.value
                     if (current is PokemonUiState.Success && current.activeGen == _selectedGen.value && current.query == _searchQuery.value) {

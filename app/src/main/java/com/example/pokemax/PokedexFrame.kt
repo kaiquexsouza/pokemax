@@ -18,20 +18,17 @@ fun PokedexFrameContainer(
     modifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit
 ) {
-    // Outer Pokédex Red Body
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(PokedexRedFrame)
             .padding(12.dp)
     ) {
-        // Red Outer Frame Accents (Side Tech Notches)
         Canvas(modifier = Modifier.fillMaxSize()) {
             val width = size.width
             val height = size.height
             val strokeW = 10f
 
-            // Left tech notches
             drawLine(
                 color = PokedexRedDark,
                 start = Offset(4f, height * 0.15f),
@@ -45,7 +42,6 @@ fun PokedexFrameContainer(
                 strokeWidth = strokeW
             )
 
-            // Right tech notches
             drawLine(
                 color = PokedexRedDark,
                 start = Offset(width - 4f, height * 0.20f),
@@ -54,13 +50,11 @@ fun PokedexFrameContainer(
             )
         }
 
-        // Inner Content Container with Silver Bottom Trim and Blue Display
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(4.dp)
         ) {
-            // Blue Screen Display Container
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -68,14 +62,12 @@ fun PokedexFrameContainer(
                     .clip(RoundedCornerShape(24.dp))
                     .background(PokedexBlueScreen)
             ) {
-                // Background Cyan Arcs & Pokéball Watermark (as seen in reference image!)
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val w = size.width
                     val h = size.height
                     val cyanColor = PokedexCyanAccent.copy(alpha = 0.45f)
                     val arcStroke = 12f
 
-                    // Top-right large cyan arc
                     drawArc(
                         color = cyanColor,
                         startAngle = 90f,
@@ -86,7 +78,6 @@ fun PokedexFrameContainer(
                         style = Stroke(width = arcStroke)
                     )
 
-                    // Bottom-left cyan arc
                     drawArc(
                         color = cyanColor,
                         startAngle = 270f,
@@ -97,25 +88,21 @@ fun PokedexFrameContainer(
                         style = Stroke(width = arcStroke)
                     )
 
-                    // Bottom-right Pokeball Watermark icon
                     val pbRadius = w * 0.14f
                     val pbCenter = Offset(w * 0.80f, h * 0.85f)
 
-                    // Outer circle
                     drawCircle(
                         color = cyanColor,
                         radius = pbRadius,
                         center = pbCenter,
                         style = Stroke(width = arcStroke)
                     )
-                    // Center horizontal line
                     drawLine(
                         color = cyanColor,
                         start = Offset(pbCenter.x - pbRadius, pbCenter.y),
                         end = Offset(pbCenter.x + pbRadius, pbCenter.y),
                         strokeWidth = arcStroke
                     )
-                    // Inner button circle
                     drawCircle(
                         color = cyanColor,
                         radius = pbRadius * 0.35f,
@@ -124,13 +111,11 @@ fun PokedexFrameContainer(
                     )
                 }
 
-                // Main screen content overlay
                 content()
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Bottom White/Silver Accent Trim (matching image reference)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()

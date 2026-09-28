@@ -24,15 +24,10 @@ class PokemonRepository {
 
     private val apiService = retrofit.create(PokeApiService::class.java)
 
-    // Thread-safe in-memory cache
     private val detailCache = ConcurrentHashMap<Int, PokemonDetail>()
     private val chainCache = ConcurrentHashMap<Int, ChainLink>()
     private val moveCache = ConcurrentHashMap<String, MoveDetailResponse>()
 
-    /**
-     * Gera uma lista instantânea (0ms) baseada nos IDs da geração para que a UI nunca trave em Loading.
-     * Se gen for null (Todas as Gerações), estende do ID 1 ao 1025.
-     */
     fun getInstantLocalList(gen: GenerationInfo?, searchQuery: String = ""): List<Pokemon> {
         val startId = gen?.startId ?: 1
         val endId = gen?.endId ?: 1025
@@ -56,10 +51,6 @@ class PokemonRepository {
         }
     }
 
-    /**
-     * Retorna a lista de Pokémon vinda da PokeAPI, aplicando cache para os itens conhecidos.
-     * Se gen for null (Todas as Gerações), busca os 1025 Pokémon de todas as gerações.
-     */
     suspend fun fetchPokemonListFast(gen: GenerationInfo?, searchQuery: String = ""): List<Pokemon> {
         val limit = gen?.limit ?: 1025
         val offset = gen?.offset ?: 0
@@ -70,7 +61,6 @@ class PokemonRepository {
             getInstantLocalList(gen, searchQuery)
         }
 
-        // Filtrar por texto se fornecido
         val filtered = if (searchQuery.isBlank()) {
             rawList
         } else {
@@ -92,9 +82,6 @@ class PokemonRepository {
         }
     }
 
-    /**
-     * Enriquece os tipos dos Pokémon em segundo plano em lotes controlados, notificando a UI a cada lote.
-     */
     suspend fun enrichPokemonDetailsInBackground(
         currentList: List<Pokemon>,
         onBatchUpdated: (List<Pokemon>) -> Unit

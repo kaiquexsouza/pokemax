@@ -48,9 +48,6 @@ data class ChainLink(
             return segments.lastOrNull()?.toIntOrNull() ?: 0
         }
 
-    /**
-     * Retorna se a cadeia evolutiva possui mais de 1 estágio (ou seja, se há evolução).
-     */
     fun hasEvolutions(): Boolean {
         return evolvesTo.isNotEmpty()
     }
@@ -83,9 +80,6 @@ data class EvolutionStep(
     val requirement: String
 )
 
-/**
- * Função utilitária para extrair os passos evolutivos de uma cadeia.
- */
 fun extractEvolutionSteps(rootLink: ChainLink): List<EvolutionStep> {
     val steps = mutableListOf<EvolutionStep>()
 
