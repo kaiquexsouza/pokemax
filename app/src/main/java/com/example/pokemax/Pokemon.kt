@@ -16,6 +16,9 @@ data class Pokemon(
     val formattedId: String
         get() = "#$id"
 
+    val pixelArtUrl: String
+        get() = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/$id.png"
+
     val imageUrl: String
-        get() = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/$id.png"
+        get() = pixelArtUrl
 }

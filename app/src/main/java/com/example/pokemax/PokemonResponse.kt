@@ -21,8 +21,14 @@ data class PokemonDetail(
     @SerializedName("moves") val moves: List<PokemonMoveSlot> = emptyList(),
     @SerializedName("species") val species: NamedApiResource? = null
 ) {
-    val imageUrl: String
+    val animatedGifUrl: String
+        get() = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/$id.gif"
+
+    val fallbackImageUrl: String
         get() = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/$id.png"
+
+    val imageUrl: String
+        get() = animatedGifUrl
 
     val formattedId: String
         get() = "#$id"

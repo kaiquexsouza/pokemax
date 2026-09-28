@@ -1,5 +1,6 @@
 package com.example.pokemax
 
+import android.os.Build
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -9,10 +10,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -20,6 +25,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
+import coil.decode.GifDecoder
+import coil.decode.ImageDecoderDecoder
+import coil.request.ImageRequest
 
 @Composable
 fun PokemonTypeBadge(
@@ -71,7 +79,6 @@ fun PokemonCard(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // Top row: Number and ALL Type Badges
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -102,7 +109,6 @@ fun PokemonCard(
                 }
             }
 
-            // Center Artwork Image cleanly contained
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -110,15 +116,14 @@ fun PokemonCard(
                 contentAlignment = Alignment.Center
             ) {
                 AsyncImage(
-                    model = pokemon.imageUrl,
+                    model = pokemon.pixelArtUrl,
                     contentDescription = pokemon.name,
-                    modifier = Modifier.size(100.dp)
+                    modifier = Modifier.size(90.dp)
                 )
             }
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Bottom Name Label cleanly inside the card
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -147,6 +152,23 @@ fun PokemonDetailHeader(
     modifier: Modifier = Modifier
 ) {
     val typeColor = getPokemonTypeColor(pokemon.primaryType)
+    val context = LocalContext.current
+
+    val gifRequest = remember(pokemon.id) {
+        ImageRequest.Builder(context)
+            .data(pokemon.animatedGifUrl)
+            .decoderFactory(
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    ImageDecoderDecoder.Factory()
+                } else {
+                    GifDecoder.Factory()
+                }
+            )
+            .crossfade(true)
+            .build()
+    }
+
+    var currentImageModel by remember(pokemon.id) { mutableStateOf<Any>(gifRequest) }
 
     Column(
         modifier = modifier
@@ -193,9 +215,14 @@ fun PokemonDetailHeader(
         Spacer(modifier = Modifier.height(12.dp))
 
         AsyncImage(
-            model = pokemon.imageUrl,
+            model = currentImageModel,
             contentDescription = pokemon.name,
-            modifier = Modifier.size(180.dp)
+            onError = {
+                if (currentImageModel != pokemon.fallbackImageUrl) {
+                    currentImageModel = pokemon.fallbackImageUrl
+                }
+            },
+            modifier = Modifier.size(160.dp)
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -335,12 +362,44 @@ fun EvolutionChainView(
     evolutionSteps: List<EvolutionStep>,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         evolutionSteps.forEach { step ->
+            val fromGifRequest = remember(step.fromSpeciesId) {
+                ImageRequest.Builder(context)
+                    .data("https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/${step.fromSpeciesId}.gif")
+                    .decoderFactory(
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                            ImageDecoderDecoder.Factory()
+                        } else {
+                            GifDecoder.Factory()
+                        }
+                    )
+                    .crossfade(true)
+                    .build()
+            }
+            var fromModel by remember(step.fromSpeciesId) { mutableStateOf<Any>(fromGifRequest) }
+
+            val toGifRequest = remember(step.toSpeciesId) {
+                ImageRequest.Builder(context)
+                    .data("https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/${step.toSpeciesId}.gif")
+                    .decoderFactory(
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                            ImageDecoderDecoder.Factory()
+                        } else {
+                            GifDecoder.Factory()
+                        }
+                    )
+                    .crossfade(true)
+                    .build()
+            }
+            var toModel by remember(step.toSpeciesId) { mutableStateOf<Any>(toGifRequest) }
+
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
@@ -361,8 +420,11 @@ fun EvolutionChainView(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         AsyncImage(
-                            model = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${step.fromSpeciesId}.png",
+                            model = fromModel,
                             contentDescription = step.fromSpeciesName,
+                            onError = {
+                                fromModel = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${step.fromSpeciesId}.png"
+                            },
                             modifier = Modifier.size(70.dp)
                         )
                         Text(
@@ -403,8 +465,11 @@ fun EvolutionChainView(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         AsyncImage(
-                            model = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${step.toSpeciesId}.png",
+                            model = toModel,
                             contentDescription = step.toSpeciesName,
+                            onError = {
+                                toModel = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${step.toSpeciesId}.png"
+                            },
                             modifier = Modifier.size(70.dp)
                         )
                         Text(
