@@ -27,6 +27,12 @@ data class PokemonDetail(
     val fallbackImageUrl: String
         get() = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/$id.png"
 
+    val shinyAnimatedGifUrl: String
+        get() = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/shiny/$id.gif"
+
+    val shinyFallbackImageUrl: String
+        get() = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/$id.png"
+
     val imageUrl: String
         get() = animatedGifUrl
 

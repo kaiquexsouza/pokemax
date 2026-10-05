@@ -25,8 +25,19 @@ class PokemonRepository {
     private val apiService = retrofit.create(PokeApiService::class.java)
 
     private val detailCache = ConcurrentHashMap<Int, PokemonDetail>()
+    private val detailCacheByName = ConcurrentHashMap<String, PokemonDetail>()
+    private val speciesCache = ConcurrentHashMap<Int, PokemonSpeciesResponse>()
     private val chainCache = ConcurrentHashMap<Int, ChainLink>()
     private val moveCache = ConcurrentHashMap<String, MoveDetailResponse>()
+
+    fun getCachedDetailLocally(idOrName: String): PokemonDetail? {
+        val intId = idOrName.toIntOrNull()
+        if (intId != null) {
+            return detailCache[intId]
+        }
+        val key = idOrName.trim().lowercase()
+        return detailCacheByName[key]
+    }
 
     fun getInstantLocalList(gen: GenerationInfo?, searchQuery: String = ""): List<Pokemon> {
         val startId = gen?.startId ?: 1
@@ -126,12 +137,64 @@ class PokemonRepository {
         return detail
     }
 
+    suspend fun fetchPokemonDetailByNameOrId(idOrName: String): PokemonDetail {
+        val intId = idOrName.toIntOrNull()
+        if (intId != null) {
+            return fetchPokemonDetail(intId)
+        }
+
+        val key = idOrName.trim().lowercase()
+        val cached = detailCacheByName[key]
+        if (cached != null) return cached
+
+        val detail = apiService.getPokemonDetailByName(key)
+        detailCache[detail.id] = detail
+        detailCacheByName[key] = detail
+        return detail
+    }
+
+    suspend fun fetchPokedexDescriptions(pokemonId: Int): List<String> {
+        return try {
+            val cachedSpecies = speciesCache[pokemonId]
+            val species = cachedSpecies ?: run {
+                val fetched = apiService.getPokemonSpecies(pokemonId)
+                speciesCache[pokemonId] = fetched
+                fetched
+            }
+
+            val entries = species.flavorTextEntries ?: emptyList()
+            if (entries.isEmpty()) return listOf("Nenhuma descrição disponível para este Pokémon.")
+
+            val ptEntries = entries.filter { it.language.name == "pt-BR" || it.language.name == "pt" }
+            val rawTexts = if (ptEntries.isNotEmpty()) {
+                ptEntries.map { it.flavorText }
+            } else {
+                entries.filter { it.language.name == "en" }.map { it.flavorText }
+            }
+
+            val translated = rawTexts.map { text ->
+                val clean = text.replace("\n", " ").replace("\u000c", " ").trim()
+                if (ptEntries.isNotEmpty()) clean else TranslationService.translateToPortuguese(clean)
+            }.distinct()
+
+            translated.ifEmpty { listOf("Nenhuma descrição disponível para este Pokémon.") }
+        } catch (_: Exception) {
+            listOf("Nenhuma descrição disponível para este Pokémon.")
+        }
+    }
+
     suspend fun fetchEvolutionChain(pokemonId: Int): ChainLink? {
         val cached = chainCache[pokemonId]
         if (cached != null) return cached
 
         return try {
-            val species = apiService.getPokemonSpecies(pokemonId)
+            val cachedSpecies = speciesCache[pokemonId]
+            val species = cachedSpecies ?: run {
+                val fetched = apiService.getPokemonSpecies(pokemonId)
+                speciesCache[pokemonId] = fetched
+                fetched
+            }
+
             val chainUrl = species.evolutionChain?.url
             if (!chainUrl.isNullOrEmpty()) {
                 val evolutionChain = apiService.getEvolutionChainByUrl(chainUrl)
@@ -152,6 +215,16 @@ class PokemonRepository {
         if (cached != null) return cached
 
         val moveDetail = apiService.getMoveDetail(key)
+
+        val rawDesc = moveDetail.description
+        val rawEffect = moveDetail.effectText
+
+        val translatedDesc = TranslationService.translateToPortuguese(rawDesc)
+        val translatedEffect = if (!rawEffect.isNullOrBlank()) TranslationService.translateToPortuguese(rawEffect) else null
+
+        moveDetail.translatedDescription = translatedDesc
+        moveDetail.translatedEffectText = translatedEffect
+
         moveCache[key] = moveDetail
         return moveDetail
     }

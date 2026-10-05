@@ -148,15 +148,20 @@ fun PokemonCard(
 @Composable
 fun PokemonDetailHeader(
     pokemon: PokemonDetail,
+    isShiny: Boolean,
+    onToggleShiny: () -> Unit,
     onBackClicked: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val typeColor = getPokemonTypeColor(pokemon.primaryType)
     val context = LocalContext.current
 
-    val gifRequest = remember(pokemon.id) {
+    val activeGifUrl = if (isShiny) pokemon.shinyAnimatedGifUrl else pokemon.animatedGifUrl
+    val activeFallbackUrl = if (isShiny) pokemon.shinyFallbackImageUrl else pokemon.fallbackImageUrl
+
+    val gifRequest = remember(pokemon.id, isShiny) {
         ImageRequest.Builder(context)
-            .data(pokemon.animatedGifUrl)
+            .data(activeGifUrl)
             .decoderFactory(
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                     ImageDecoderDecoder.Factory()
@@ -168,7 +173,7 @@ fun PokemonDetailHeader(
             .build()
     }
 
-    var currentImageModel by remember(pokemon.id) { mutableStateOf<Any>(gifRequest) }
+    var currentImageModel by remember(pokemon.id, isShiny) { mutableStateOf<Any>(gifRequest) }
 
     Column(
         modifier = modifier
@@ -187,11 +192,11 @@ fun PokemonDetailHeader(
                 onClick = onBackClicked,
                 modifier = Modifier
                     .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.3f))
+                    .background(Color.White)
             ) {
                 Text(
                     text = "←",
-                    color = Color.White,
+                    color = Color.Black,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -214,16 +219,37 @@ fun PokemonDetailHeader(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        AsyncImage(
-            model = currentImageModel,
-            contentDescription = pokemon.name,
-            onError = {
-                if (currentImageModel != pokemon.fallbackImageUrl) {
-                    currentImageModel = pokemon.fallbackImageUrl
-                }
-            },
-            modifier = Modifier.size(160.dp)
-        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            AsyncImage(
+                model = currentImageModel,
+                contentDescription = pokemon.name,
+                onError = {
+                    if (currentImageModel != activeFallbackUrl) {
+                        currentImageModel = activeFallbackUrl
+                    }
+                },
+                modifier = Modifier.size(170.dp)
+            )
+
+            IconButton(
+                onClick = onToggleShiny,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .clip(CircleShape)
+                    .background(if (isShiny) Color(0xFFFFD700) else Color.White)
+                    .size(42.dp)
+            ) {
+                Text(
+                    text = "✦",
+                    fontSize = 20.sp
+                )
+            }
+        }
 
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -266,6 +292,85 @@ fun PokemonDetailHeader(
                     color = Color.White.copy(alpha = 0.8f)
                 )
             }
+        }
+    }
+}
+
+@Composable
+fun PokedexDescriptionCard(
+    descriptions: List<String>,
+    modifier: Modifier = Modifier
+) {
+    if (descriptions.isEmpty()) return
+
+    var currentIndex by remember(descriptions) { mutableStateOf(0) }
+    val safeIndex = currentIndex.coerceIn(0, descriptions.lastIndex)
+    val total = descriptions.size
+
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.90f))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "DESCRIÇÃO DA POKÉDEX",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                if (total > 1) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        IconButton(
+                            onClick = {
+                                currentIndex = if (safeIndex > 0) safeIndex - 1 else total - 1
+                            },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Text(text = "◀", fontSize = 12.sp, color = Color.DarkGray)
+                        }
+
+                        Text(
+                            text = "${safeIndex + 1} / $total",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.DarkGray
+                        )
+
+                        IconButton(
+                            onClick = {
+                                currentIndex = if (safeIndex < total - 1) safeIndex + 1 else 0
+                            },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Text(text = "▶", fontSize = 12.sp, color = Color.DarkGray)
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "\"${descriptions[safeIndex]}\"",
+                fontSize = 14.sp,
+                fontStyle = FontStyle.Italic,
+                color = Color.Black,
+                lineHeight = 20.sp
+            )
         }
     }
 }
@@ -360,6 +465,7 @@ fun StatBar(
 @Composable
 fun EvolutionChainView(
     evolutionSteps: List<EvolutionStep>,
+    onPokemonClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -385,9 +491,9 @@ fun EvolutionChainView(
             }
             var fromModel by remember(step.fromSpeciesId) { mutableStateOf<Any>(fromGifRequest) }
 
-            val toGifRequest = remember(step.toSpeciesId) {
+            val toGifRequest = remember(step.toSpeciesIdOrName) {
                 ImageRequest.Builder(context)
-                    .data("https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/${step.toSpeciesId}.gif")
+                    .data(if (step.isMega) "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/${step.toSpeciesId}.gif" else "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/${step.toSpeciesId}.gif")
                     .decoderFactory(
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                             ImageDecoderDecoder.Factory()
@@ -398,7 +504,7 @@ fun EvolutionChainView(
                     .crossfade(true)
                     .build()
             }
-            var toModel by remember(step.toSpeciesId) { mutableStateOf<Any>(toGifRequest) }
+            var toModel by remember(step.toSpeciesIdOrName) { mutableStateOf<Any>(toGifRequest) }
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -412,7 +518,10 @@ fun EvolutionChainView(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.clickable { onPokemonClick(step.fromSpeciesIdOrName) }
+                    ) {
                         Text(
                             text = "Forma Base:",
                             fontSize = 12.sp,
@@ -457,11 +566,15 @@ fun EvolutionChainView(
                         )
                     }
 
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.clickable { onPokemonClick(step.toSpeciesIdOrName) }
+                    ) {
                         Text(
-                            text = "Resultado:",
+                            text = if (step.isMega) "Mega Evolução:" else "Resultado:",
                             fontSize = 12.sp,
-                            color = Color.Gray
+                            color = if (step.isMega) MaterialTheme.colorScheme.primary else Color.Gray,
+                            fontWeight = if (step.isMega) FontWeight.Bold else FontWeight.Normal
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         AsyncImage(

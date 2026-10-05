@@ -5,6 +5,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -21,6 +23,7 @@ data class PokemonDetailData(
     val damageMoves: List<PokemonMoveSlot>,
     val supportMoves: List<PokemonMoveSlot>,
     val evolutionSteps: List<EvolutionStep>,
+    val pokedexDescriptions: List<String>,
     val hasEvolution: Boolean
 )
 
@@ -55,11 +58,17 @@ class PokemonViewModel(
     private val repository: PokemonRepository = PokemonRepository()
 ) : ViewModel() {
 
+    private val _isLoggedIn = mutableStateOf(false)
+    val isLoggedIn: State<Boolean> = _isLoggedIn
+
     private val _selectedGen = mutableStateOf<GenerationInfo?>(PokemonGenerations.ALL.first())
     val selectedGen: State<GenerationInfo?> = _selectedGen
 
     private val _searchQuery = mutableStateOf("")
     val searchQuery: State<String> = _searchQuery
+
+    private val _isShiny = mutableStateOf(false)
+    val isShiny: State<Boolean> = _isShiny
 
     private val _uiState = mutableStateOf<PokemonUiState>(PokemonUiState.Loading)
     val uiState: State<PokemonUiState> = _uiState
@@ -71,9 +80,27 @@ class PokemonViewModel(
     val moveDetailUiState: State<MoveDetailUiState> = _moveDetailUiState
 
     private var listJob: Job? = null
+    private var detailJob: Job? = null
 
     init {
         loadPokemonList()
+    }
+
+    fun performLogin(usernameOrEmail: String, password: String) {
+        // Futura validação com banco de dados
+        _isLoggedIn.value = true
+    }
+
+    fun loginAsGuest() {
+        _isLoggedIn.value = true
+    }
+
+    fun logout() {
+        _isLoggedIn.value = false
+    }
+
+    fun toggleShiny() {
+        _isShiny.value = !_isShiny.value
     }
 
     fun onGenerationSelected(gen: GenerationInfo) {
@@ -132,44 +159,76 @@ class PokemonViewModel(
     }
 
     fun loadPokemonDetail(id: Int) {
-        viewModelScope.launch {
-            _detailUiState.value = PokemonDetailUiState.Loading
-            try {
-                val detail = repository.fetchPokemonDetail(id)
-                val chain = repository.fetchEvolutionChain(id)
+        loadPokemonDetailByNameOrId(id.toString())
+    }
 
-                val mainAbilities = detail.abilities
-                    .filter { !it.isHidden }
-                    .map { it.ability.name.replace('-', ' ').replaceFirstChar { c -> c.uppercase() } }
-
-                val hiddenAbilities = detail.abilities
-                    .filter { it.isHidden }
-                    .map { it.ability.name.replace('-', ' ').replaceFirstChar { c -> c.uppercase() } }
-
-                val evolutionSteps = if (chain != null) extractEvolutionSteps(chain) else emptyList()
-                val hasEvolution = evolutionSteps.isNotEmpty()
-
-                val allMoves = detail.moves
+    fun loadPokemonDetailByNameOrId(idOrName: String) {
+        _isShiny.value = false
+        detailJob?.cancel()
+        detailJob = viewModelScope.launch {
+            val cachedDetail = repository.getCachedDetailLocally(idOrName)
+            if (cachedDetail != null) {
+                val allMoves = cachedDetail.moves
                 val half = (allMoves.size + 1) / 2
-                val damageMoves = allMoves.take(half)
-                val supportMoves = allMoves.drop(half)
-
-                val data = PokemonDetailData(
-                    detail = detail,
-                    mainAbilities = mainAbilities.ifEmpty { listOf("Nenhuma") },
-                    hiddenAbilities = hiddenAbilities,
-                    damageMoves = damageMoves,
-                    supportMoves = supportMoves,
-                    evolutionSteps = evolutionSteps,
-                    hasEvolution = hasEvolution
+                val initialData = PokemonDetailData(
+                    detail = cachedDetail,
+                    mainAbilities = cachedDetail.abilities.filter { !it.isHidden }.map { it.ability.name.replace('-', ' ').replaceFirstChar { c -> c.uppercase() } }.ifEmpty { listOf("Nenhuma") },
+                    hiddenAbilities = cachedDetail.abilities.filter { it.isHidden }.map { it.ability.name.replace('-', ' ').replaceFirstChar { c -> c.uppercase() } },
+                    damageMoves = allMoves.take(half),
+                    supportMoves = allMoves.drop(half),
+                    evolutionSteps = emptyList(),
+                    pokedexDescriptions = listOf("Carregando descrição da Pokédex..."),
+                    hasEvolution = true
                 )
+                _detailUiState.value = PokemonDetailUiState.Success(data = initialData)
+            } else {
+                _detailUiState.value = PokemonDetailUiState.Loading
+            }
 
-                _detailUiState.value = PokemonDetailUiState.Success(
-                    data = data,
-                    selectedTab = DetailTab.STATS
-                )
+            try {
+                coroutineScope {
+                    val detailDeferred = async { repository.fetchPokemonDetailByNameOrId(idOrName) }
+                    val detail = detailDeferred.await()
+
+                    val chainDeferred = async { repository.fetchEvolutionChain(detail.id) }
+                    val descDeferred = async { repository.fetchPokedexDescriptions(detail.id) }
+
+                    val chain = chainDeferred.await()
+                    val pokedexDescriptions = descDeferred.await()
+
+                    val mainAbilities = detail.abilities
+                        .filter { !it.isHidden }
+                        .map { it.ability.name.replace('-', ' ').replaceFirstChar { c -> c.uppercase() } }
+
+                    val hiddenAbilities = detail.abilities
+                        .filter { it.isHidden }
+                        .map { it.ability.name.replace('-', ' ').replaceFirstChar { c -> c.uppercase() } }
+
+                    val evolutionSteps = if (chain != null) extractEvolutionSteps(chain) else emptyList()
+                    val hasEvolution = evolutionSteps.isNotEmpty()
+
+                    val allMoves = detail.moves
+                    val half = (allMoves.size + 1) / 2
+                    val damageMoves = allMoves.take(half)
+                    val supportMoves = allMoves.drop(half)
+
+                    val fullData = PokemonDetailData(
+                        detail = detail,
+                        mainAbilities = mainAbilities.ifEmpty { listOf("Nenhuma") },
+                        hiddenAbilities = hiddenAbilities,
+                        damageMoves = damageMoves,
+                        supportMoves = supportMoves,
+                        evolutionSteps = evolutionSteps,
+                        pokedexDescriptions = pokedexDescriptions,
+                        hasEvolution = hasEvolution
+                    )
+
+                    _detailUiState.value = PokemonDetailUiState.Success(data = fullData)
+                }
             } catch (e: Exception) {
-                _detailUiState.value = PokemonDetailUiState.Error(e.localizedMessage ?: "Erro ao carregar detalhes")
+                if (_detailUiState.value !is PokemonDetailUiState.Success) {
+                    _detailUiState.value = PokemonDetailUiState.Error(e.localizedMessage ?: "Erro ao carregar detalhes")
+                }
             }
         }
     }

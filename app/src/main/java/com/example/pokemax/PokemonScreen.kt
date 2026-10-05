@@ -1,6 +1,5 @@
 package com.example.pokemax
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -28,36 +27,52 @@ fun PokemonScreen(
     modifier: Modifier = Modifier,
     viewModel: PokemonViewModel = viewModel()
 ) {
+    val isLoggedIn by viewModel.isLoggedIn
     val uiState by viewModel.uiState
     val detailUiState by viewModel.detailUiState
     val moveDetailUiState by viewModel.moveDetailUiState
 
-    PokedexFrameContainer(modifier = modifier) {
-        if (detailUiState !is PokemonDetailUiState.Idle) {
-            PokemonDetailContent(
-                detailUiState = detailUiState,
-                onBackClicked = { viewModel.clearPokemonDetail() },
-                onTabSelected = { viewModel.selectTab(it) },
-                onMoveClicked = { moveName -> viewModel.loadMoveDetail(moveName) },
-                onRetryClicked = { viewModel.clearPokemonDetail() }
-            )
-        } else {
-            PokemonListContent(
-                uiState = uiState,
-                selectedGen = viewModel.selectedGen.value,
-                searchQuery = viewModel.searchQuery.value,
-                onSearchQueryChanged = { viewModel.onSearchQueryChanged(it) },
-                onGenSelected = { viewModel.onGenerationSelected(it) },
-                onPokemonClicked = { pokemonId -> viewModel.loadPokemonDetail(pokemonId) },
-                onRetryClicked = { viewModel.loadPokemonList() }
-            )
-        }
+    if (!isLoggedIn) {
+        LoginScreen(
+            onLoginSubmitted = { usernameOrEmail, password ->
+                viewModel.performLogin(usernameOrEmail, password)
+            },
+            onGuestLogin = {
+                viewModel.loginAsGuest()
+            },
+            modifier = modifier
+        )
+    } else {
+        PokedexFrameContainer(modifier = modifier) {
+            if (detailUiState !is PokemonDetailUiState.Idle) {
+                PokemonDetailContent(
+                    detailUiState = detailUiState,
+                    isShiny = viewModel.isShiny.value,
+                    onToggleShiny = { viewModel.toggleShiny() },
+                    onBackClicked = { viewModel.clearPokemonDetail() },
+                    onTabSelected = { viewModel.selectTab(it) },
+                    onMoveClicked = { moveName -> viewModel.loadMoveDetail(moveName) },
+                    onPokemonClick = { idOrName -> viewModel.loadPokemonDetailByNameOrId(idOrName) },
+                    onRetryClicked = { viewModel.clearPokemonDetail() }
+                )
+            } else {
+                PokemonListContent(
+                    uiState = uiState,
+                    selectedGen = viewModel.selectedGen.value,
+                    searchQuery = viewModel.searchQuery.value,
+                    onSearchQueryChanged = { viewModel.onSearchQueryChanged(it) },
+                    onGenSelected = { viewModel.onGenerationSelected(it) },
+                    onPokemonClicked = { pokemonId -> viewModel.loadPokemonDetail(pokemonId) },
+                    onRetryClicked = { viewModel.loadPokemonList() }
+                )
+            }
 
-        if (moveDetailUiState !is MoveDetailUiState.Idle) {
-            MoveDetailDialog(
-                moveDetailUiState = moveDetailUiState,
-                onDismiss = { viewModel.clearMoveDetail() }
-            )
+            if (moveDetailUiState !is MoveDetailUiState.Idle) {
+                MoveDetailDialog(
+                    moveDetailUiState = moveDetailUiState,
+                    onDismiss = { viewModel.clearMoveDetail() }
+                )
+            }
         }
     }
 }
@@ -222,9 +237,12 @@ fun PokemonListContent(
 @Composable
 fun PokemonDetailContent(
     detailUiState: PokemonDetailUiState,
+    isShiny: Boolean,
+    onToggleShiny: () -> Unit,
     onBackClicked: () -> Unit,
     onTabSelected: (DetailTab) -> Unit,
     onMoveClicked: (String) -> Unit,
+    onPokemonClick: (String) -> Unit,
     onRetryClicked: () -> Unit
 ) {
     when (detailUiState) {
@@ -243,6 +261,8 @@ fun PokemonDetailContent(
             Column(modifier = Modifier.fillMaxSize()) {
                 PokemonDetailHeader(
                     pokemon = pokemon,
+                    isShiny = isShiny,
+                    onToggleShiny = onToggleShiny,
                     onBackClicked = onBackClicked
                 )
 
@@ -262,6 +282,11 @@ fun PokemonDetailContent(
                     when (detailUiState.selectedTab) {
                         DetailTab.STATS -> {
                             item {
+                                PokedexDescriptionCard(
+                                    descriptions = data.pokedexDescriptions,
+                                    modifier = Modifier.padding(bottom = 12.dp)
+                                )
+
                                 Text(
                                     text = "STATS DE BASE",
                                     fontSize = 18.sp,
@@ -290,8 +315,22 @@ fun PokemonDetailContent(
                                     data.mainAbilities.forEach { ability ->
                                         AssistChip(
                                             onClick = {},
-                                            label = { Text(ability) },
-                                            shape = RoundedCornerShape(12.dp)
+                                            label = {
+                                                Text(
+                                                    text = ability,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color.Black
+                                                )
+                                            },
+                                            shape = RoundedCornerShape(12.dp),
+                                            colors = AssistChipDefaults.assistChipColors(
+                                                containerColor = Color.White.copy(alpha = 0.90f),
+                                                labelColor = Color.Black
+                                            ),
+                                            border = AssistChipDefaults.assistChipBorder(
+                                                enabled = true,
+                                                borderColor = Color.White
+                                            )
                                         )
                                     }
                                 }
@@ -310,8 +349,22 @@ fun PokemonDetailContent(
                                         data.hiddenAbilities.forEach { ability ->
                                             AssistChip(
                                                 onClick = {},
-                                                label = { Text(ability) },
-                                                shape = RoundedCornerShape(12.dp)
+                                                label = {
+                                                    Text(
+                                                        text = ability,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = Color.Black
+                                                    )
+                                                },
+                                                shape = RoundedCornerShape(12.dp),
+                                                colors = AssistChipDefaults.assistChipColors(
+                                                    containerColor = Color.White.copy(alpha = 0.90f),
+                                                    labelColor = Color.Black
+                                                ),
+                                                border = AssistChipDefaults.assistChipBorder(
+                                                    enabled = true,
+                                                    borderColor = Color.White
+                                                )
                                             )
                                         }
                                     }
@@ -414,7 +467,8 @@ fun PokemonDetailContent(
                                     modifier = Modifier.padding(bottom = 8.dp)
                                 )
                                 EvolutionChainView(
-                                    evolutionSteps = data.evolutionSteps
+                                    evolutionSteps = data.evolutionSteps,
+                                    onPokemonClick = onPokemonClick
                                 )
                             }
                         }

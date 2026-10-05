@@ -65,13 +65,22 @@ private val moveTranslations = mapOf(
     "recover" to "Recuperação",
     "synthesis" to "Síntese",
     "moonlight" to "Luz do Luar",
-    "morning sun" to "Sol da Manhã"
+    "morning sun" to "Sol da Manhã",
+    "close combat" to "Combate Próximo",
+    "stone edge" to "Gume de Pedra",
+    "leaf blade" to "Lâmina de Folha",
+    "outrage" to "Ultraje",
+    "draco meteor" to "Meteoro Dracônico",
+    "meteor mash" to "Soco Meteórico"
 )
 
 fun translateMoveName(moveName: String?): String {
     if (moveName.isNullOrBlank()) return ""
     val clean = moveName.lowercase().replace('-', ' ').trim()
-    return moveTranslations[clean] ?: clean.split(' ').joinToString(" ") { word ->
+    val direct = moveTranslations[clean]
+    if (direct != null) return direct
+
+    return clean.split(' ').joinToString(" ") { word ->
         word.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
     }
 }

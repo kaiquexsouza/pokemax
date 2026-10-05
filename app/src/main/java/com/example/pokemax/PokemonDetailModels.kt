@@ -29,7 +29,8 @@ data class UrlResource(
 data class PokemonSpeciesResponse(
     @SerializedName("id") val id: Int,
     @SerializedName("name") val name: String,
-    @SerializedName("evolution_chain") val evolutionChain: UrlResource?
+    @SerializedName("evolution_chain") val evolutionChain: UrlResource?,
+    @SerializedName("flavor_text_entries") val flavorTextEntries: List<FlavorTextEntry>? = null
 )
 
 data class EvolutionChainResponse(
@@ -74,23 +75,31 @@ data class EvolutionDetail(
 
 data class EvolutionStep(
     val fromSpeciesName: String,
+    val fromSpeciesIdOrName: String,
     val fromSpeciesId: Int,
     val toSpeciesName: String,
+    val toSpeciesIdOrName: String,
     val toSpeciesId: Int,
-    val requirement: String
+    val requirement: String,
+    val isMega: Boolean = false
 )
 
 fun extractEvolutionSteps(rootLink: ChainLink): List<EvolutionStep> {
     val steps = mutableListOf<EvolutionStep>()
+    val visitedSpeciesIds = mutableSetOf<Int>()
 
     fun traverse(parent: ChainLink) {
+        visitedSpeciesIds.add(parent.speciesId)
         for (child in parent.evolvesTo) {
+            visitedSpeciesIds.add(child.speciesId)
             val req = child.evolutionDetails.firstOrNull()?.formattedRequirement ?: "Evolução"
             steps.add(
                 EvolutionStep(
                     fromSpeciesName = parent.species.name,
+                    fromSpeciesIdOrName = parent.speciesId.toString(),
                     fromSpeciesId = parent.speciesId,
                     toSpeciesName = child.species.name,
+                    toSpeciesIdOrName = child.speciesId.toString(),
                     toSpeciesId = child.speciesId,
                     requirement = req
                 )
@@ -100,6 +109,25 @@ fun extractEvolutionSteps(rootLink: ChainLink): List<EvolutionStep> {
     }
 
     traverse(rootLink)
+
+    for (speciesId in visitedSpeciesIds) {
+        val megas = getMegaEvolutionsForPokemon(speciesId)
+        for (mega in megas) {
+            steps.add(
+                EvolutionStep(
+                    fromSpeciesName = mega.basePokemonName,
+                    fromSpeciesIdOrName = mega.basePokemonId.toString(),
+                    fromSpeciesId = mega.basePokemonId,
+                    toSpeciesName = mega.megaFormDisplayName,
+                    toSpeciesIdOrName = mega.megaPokemonName,
+                    toSpeciesId = mega.megaPokemonId,
+                    requirement = "Item: ${mega.megaStoneName}",
+                    isMega = true
+                )
+            )
+        }
+    }
+
     return steps
 }
 
@@ -114,17 +142,21 @@ data class MoveDetailResponse(
     @SerializedName("flavor_text_entries") val flavorTextEntries: List<FlavorTextEntry>?,
     @SerializedName("effect_entries") val effectEntries: List<EffectEntry>?,
     @SerializedName("effect_chance") val effectChance: Int?,
-    @SerializedName("learned_by_pokemon") val learnedByPokemon: List<NamedApiResource>?
+    @SerializedName("learned_by_pokemon") val learnedByPokemon: List<NamedApiResource>?,
+    var translatedDescription: String? = null,
+    var translatedEffectText: String? = null
 ) {
     val description: String
         get() {
+            if (!translatedDescription.isNullOrBlank()) return translatedDescription!!
             val ptText = flavorTextEntries?.firstOrNull { it.language.name == "pt-BR" || it.language.name == "pt" }?.flavorText
             val enText = flavorTextEntries?.firstOrNull { it.language.name == "en" }?.flavorText
-            return (ptText ?: enText ?: "Sem descrição disponível.").replace("\n", " ")
+            return (ptText ?: enText ?: "Sem descrição disponível.").replace("\n", " ").replace("\u000c", " ").trim()
         }
 
     val effectText: String?
         get() {
+            if (!translatedEffectText.isNullOrBlank()) return translatedEffectText!!
             val effect = effectEntries?.firstOrNull { it.language.name == "en" }?.shortEffect
             if (effect != null && effectChance != null) {
                 return effect.replace("\$effect_chance%", "$effectChance%")
