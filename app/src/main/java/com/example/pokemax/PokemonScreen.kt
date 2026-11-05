@@ -162,7 +162,7 @@ fun PokemonListContent(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(color = Color.White)
+                    PokemonLoadingIndicator(size = 120.dp)
                 }
             }
             is PokemonUiState.Success -> {
@@ -251,7 +251,7 @@ fun PokemonDetailContent(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator(color = Color.White)
+                PokemonLoadingIndicator(size = 120.dp)
             }
         }
         is PokemonDetailUiState.Success -> {

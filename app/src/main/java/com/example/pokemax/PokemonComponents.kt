@@ -21,6 +21,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -637,7 +638,7 @@ fun MoveDetailDialog(
 
                 when (moveDetailUiState) {
                     is MoveDetailUiState.Loading -> {
-                        CircularProgressIndicator(modifier = Modifier.padding(24.dp))
+                        PokemonLoadingIndicator(modifier = Modifier.padding(24.dp), size = 80.dp)
                     }
                     is MoveDetailUiState.Success -> {
                         val move = moveDetailUiState.moveDetail
@@ -725,3 +726,31 @@ fun MoveDetailDialog(
         }
     }
 }
+
+@Composable
+fun PokemonLoadingIndicator(
+    modifier: Modifier = Modifier,
+    size: Dp = 100.dp
+) {
+    val context = LocalContext.current
+    val gifRequest = remember(context) {
+        ImageRequest.Builder(context)
+            .data(R.drawable.carrega)
+            .decoderFactory(
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    ImageDecoderDecoder.Factory()
+                } else {
+                    GifDecoder.Factory()
+                }
+            )
+            .crossfade(true)
+            .build()
+    }
+
+    AsyncImage(
+        model = gifRequest,
+        contentDescription = "Carregando...",
+        modifier = modifier.size(size)
+    )
+}
+
