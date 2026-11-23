@@ -23,14 +23,14 @@ import com.example.pokemax.ui.theme.*
 @Composable
 fun LoginScreen(
     onLoginSubmitted: (String, String) -> Unit,
-    onGuestLogin: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    theme: PokedexThemeEnum = PokedexThemeEnum.RED_CLASSIC
 ) {
     var usernameOrEmail by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var isPasswordVisible by remember { mutableStateOf(false) }
 
-    PokedexFrameContainer(modifier = modifier) {
+    PokedexFrameContainer(modifier = modifier, theme = theme) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -132,32 +132,10 @@ fun LoginScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            OutlinedButton(
-                onClick = onGuestLogin,
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = PokedexBlueDark.copy(alpha = 0.6f),
-                    contentColor = Color.White
-                ),
-                border = BorderStroke(1.dp, PokedexCyanAccent.copy(alpha = 0.8f)),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp)
-            ) {
-                Text(
-                    text = "Acessar como Convidado",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.White
-                )
-            }
-
             Spacer(modifier = Modifier.height(20.dp))
 
             Text(
-                text = "Pronto para conexão com Banco de Dados",
+                text = "Conexão direta com Banco de Dados de Login",
                 fontSize = 11.sp,
                 color = Color.White.copy(alpha = 0.6f),
                 textAlign = TextAlign.Center

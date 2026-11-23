@@ -1,6 +1,8 @@
 package com.example.pokemax
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -8,17 +10,25 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.pokemax.ui.theme.*
 
@@ -27,23 +37,27 @@ fun PokemonScreen(
     modifier: Modifier = Modifier,
     viewModel: PokemonViewModel = viewModel()
 ) {
+    val context = LocalContext.current
+    viewModel.initThemeManager(context)
+
     val isLoggedIn by viewModel.isLoggedIn
     val uiState by viewModel.uiState
     val detailUiState by viewModel.detailUiState
     val moveDetailUiState by viewModel.moveDetailUiState
+    val isQuizOpen by viewModel.isQuizOpen
+    val selectedTheme by viewModel.selectedTheme
+    val isThemeSelectorOpen by viewModel.isThemeSelectorOpen
 
     if (!isLoggedIn) {
         LoginScreen(
             onLoginSubmitted = { usernameOrEmail, password ->
                 viewModel.performLogin(usernameOrEmail, password)
             },
-            onGuestLogin = {
-                viewModel.loginAsGuest()
-            },
-            modifier = modifier
+            modifier = modifier,
+            theme = selectedTheme
         )
     } else {
-        PokedexFrameContainer(modifier = modifier) {
+        PokedexFrameContainer(modifier = modifier, theme = selectedTheme) {
             if (detailUiState !is PokemonDetailUiState.Idle) {
                 PokemonDetailContent(
                     detailUiState = detailUiState,
@@ -63,7 +77,26 @@ fun PokemonScreen(
                     onSearchQueryChanged = { viewModel.onSearchQueryChanged(it) },
                     onGenSelected = { viewModel.onGenerationSelected(it) },
                     onPokemonClicked = { pokemonId -> viewModel.loadPokemonDetail(pokemonId) },
+                    onOpenQuiz = { viewModel.openQuiz() },
+                    onOpenThemeSelector = { viewModel.openThemeSelector() },
+                    onLogout = { viewModel.logout() },
                     onRetryClicked = { viewModel.loadPokemonList() }
+                )
+            }
+
+            if (isQuizOpen) {
+                val currentList = (uiState as? PokemonUiState.Success)?.pokemonList ?: emptyList()
+                QuizDialog(
+                    pokemonList = currentList,
+                    onDismiss = { viewModel.closeQuiz() }
+                )
+            }
+
+            if (isThemeSelectorOpen) {
+                ThemeSelectorDialog(
+                    selectedTheme = selectedTheme,
+                    onThemeSelected = { theme -> viewModel.selectTheme(theme) },
+                    onDismiss = { viewModel.closeThemeSelector() }
                 )
             }
 
@@ -85,6 +118,9 @@ fun PokemonListContent(
     onSearchQueryChanged: (String) -> Unit,
     onGenSelected: (GenerationInfo) -> Unit,
     onPokemonClicked: (Int) -> Unit,
+    onOpenQuiz: () -> Unit,
+    onOpenThemeSelector: () -> Unit,
+    onLogout: () -> Unit,
     onRetryClicked: () -> Unit
 ) {
     Column(
@@ -92,13 +128,58 @@ fun PokemonListContent(
             .fillMaxSize()
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
-        Text(
-            text = "Pokémax",
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.White,
-            modifier = Modifier.padding(vertical = 4.dp)
-        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                onClick = onLogout,
+                shape = RoundedCornerShape(16.dp),
+                color = PokedexBlueDark.copy(alpha = 0.85f),
+                border = BorderStroke(1.dp, PokedexCyanAccent.copy(alpha = 0.5f))
+            ) {
+                Text(
+                    text = "Sair",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                )
+            }
+
+            Text(
+                text = "Pokémax",
+                fontSize = 26.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(
+                    onClick = onOpenThemeSelector,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(PokedexBlueDark.copy(alpha = 0.85f))
+                ) {
+                    Text("🎨", fontSize = 18.sp)
+                }
+
+                IconButton(
+                    onClick = onOpenQuiz,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(PokedexBlueDark.copy(alpha = 0.85f))
+                ) {
+                    Text("🎮", fontSize = 18.sp)
+                }
+            }
+        }
 
         OutlinedTextField(
             value = searchQuery,
@@ -245,6 +326,18 @@ fun PokemonDetailContent(
     onPokemonClick: (String) -> Unit,
     onRetryClicked: () -> Unit
 ) {
+    val context = LocalContext.current
+    val audioPlayerManager = remember(context) { AudioPlayerManager(context) }
+    val speechService = remember(context) { PokedexSpeechService(context) }
+    var moveSearchQuery by remember { mutableStateOf("") }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            audioPlayerManager.stop()
+            speechService.shutdown()
+        }
+    }
+
     when (detailUiState) {
         is PokemonDetailUiState.Loading -> {
             Box(
@@ -263,7 +356,12 @@ fun PokemonDetailContent(
                     pokemon = pokemon,
                     isShiny = isShiny,
                     onToggleShiny = onToggleShiny,
-                    onBackClicked = onBackClicked
+                    onPlayCry = { audioPlayerManager.playPokemonCry(pokemon.id) },
+                    onBackClicked = {
+                        audioPlayerManager.stop()
+                        speechService.stop()
+                        onBackClicked()
+                    }
                 )
 
                 PokemonDetailTabs(
@@ -284,6 +382,7 @@ fun PokemonDetailContent(
                             item {
                                 PokedexDescriptionCard(
                                     descriptions = data.pokedexDescriptions,
+                                    onSpeakDescription = { text -> speechService.speak(text) },
                                     modifier = Modifier.padding(bottom = 12.dp)
                                 )
 
@@ -300,9 +399,45 @@ fun PokemonDetailContent(
                                         value = statSlot.baseStat
                                     )
                                 }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                TypeEffectivenessCard(
+                                    types = pokemon.types,
+                                    modifier = Modifier.padding(bottom = 12.dp)
+                                )
                             }
                         }
                         DetailTab.MOVES -> {
+                            item {
+                                OutlinedTextField(
+                                    value = moveSearchQuery,
+                                    onValueChange = { moveSearchQuery = it },
+                                    placeholder = { Text("Buscar ataque (Português ou Inglês)", color = Color.White.copy(alpha = 0.7f), fontSize = 13.sp) },
+                                    leadingIcon = { Text("🔍", fontSize = 14.sp) },
+                                    trailingIcon = {
+                                        if (moveSearchQuery.isNotEmpty()) {
+                                            IconButton(onClick = { moveSearchQuery = "" }) {
+                                                Text("✕", color = Color.White, fontSize = 14.sp)
+                                            }
+                                        }
+                                    },
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(16.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedContainerColor = PokedexBlueDark.copy(alpha = 0.85f),
+                                        unfocusedContainerColor = PokedexBlueDark.copy(alpha = 0.75f),
+                                        focusedBorderColor = PokedexCyanAccent,
+                                        unfocusedBorderColor = PokedexCyanAccent.copy(alpha = 0.6f),
+                                        focusedTextColor = Color.White,
+                                        unfocusedTextColor = Color.White
+                                    ),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = 8.dp)
+                                )
+                            }
+
                             item {
                                 Text(
                                     text = "Habilidade(s) principal(is)",
@@ -371,10 +506,42 @@ fun PokemonDetailContent(
                                 }
                             }
 
-                            if (data.damageMoves.isNotEmpty()) {
+                            val cleanMoveQuery = moveSearchQuery.trim().lowercase()
+                            val filteredDamage = if (cleanMoveQuery.isEmpty()) {
+                                data.damageMoves
+                            } else {
+                                data.damageMoves.filter { moveSlot ->
+                                    val enName = moveSlot.move.name.lowercase().replace('-', ' ')
+                                    val ptName = translateMoveName(moveSlot.move.name).lowercase()
+                                    enName.contains(cleanMoveQuery) || ptName.contains(cleanMoveQuery)
+                                }
+                            }
+
+                            val filteredSupport = if (cleanMoveQuery.isEmpty()) {
+                                data.supportMoves
+                            } else {
+                                data.supportMoves.filter { moveSlot ->
+                                    val enName = moveSlot.move.name.lowercase().replace('-', ' ')
+                                    val ptName = translateMoveName(moveSlot.move.name).lowercase()
+                                    enName.contains(cleanMoveQuery) || ptName.contains(cleanMoveQuery)
+                                }
+                            }
+
+                            if (cleanMoveQuery.isNotEmpty() && filteredDamage.isEmpty() && filteredSupport.isEmpty()) {
                                 item {
                                     Text(
-                                        text = "Ataque(s) de Dano",
+                                        text = "Nenhum ataque encontrado para \"$moveSearchQuery\".",
+                                        fontSize = 14.sp,
+                                        color = Color.White.copy(alpha = 0.8f),
+                                        modifier = Modifier.padding(vertical = 12.dp)
+                                    )
+                                }
+                            }
+
+                            if (filteredDamage.isNotEmpty()) {
+                                item {
+                                    Text(
+                                        text = "Ataque(s) de Dano (${filteredDamage.size})",
                                         fontSize = 16.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = Color.White,
@@ -382,7 +549,7 @@ fun PokemonDetailContent(
                                     )
                                 }
 
-                                items(data.damageMoves) { moveSlot ->
+                                items(filteredDamage) { moveSlot ->
                                     val moveName = translateMoveName(moveSlot.move.name)
                                     Card(
                                         modifier = Modifier
@@ -414,10 +581,10 @@ fun PokemonDetailContent(
                                 }
                             }
 
-                            if (data.supportMoves.isNotEmpty()) {
+                            if (filteredSupport.isNotEmpty()) {
                                 item {
                                     Text(
-                                        text = "Ataque(s) de Suporte",
+                                        text = "Ataque(s) de Suporte (${filteredSupport.size})",
                                         fontSize = 16.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = Color.White,
@@ -425,7 +592,7 @@ fun PokemonDetailContent(
                                     )
                                 }
 
-                                items(data.supportMoves) { moveSlot ->
+                                items(filteredSupport) { moveSlot ->
                                     val moveName = translateMoveName(moveSlot.move.name)
                                     Card(
                                         modifier = Modifier
@@ -494,5 +661,115 @@ fun PokemonDetailContent(
             }
         }
         else -> {}
+    }
+}
+
+@Composable
+fun ThemeSelectorDialog(
+    selectedTheme: PokedexThemeEnum,
+    onThemeSelected: (PokedexThemeEnum) -> Unit,
+    onDismiss: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(28.dp),
+            color = PokedexBlueDark,
+            tonalElevation = 8.dp,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 16.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(20.dp)
+                    .fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "🎨 ESCOLHA A POKÉDEX",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = PokemonYellow
+                    )
+
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.2f))
+                            .size(32.dp)
+                    ) {
+                        Text(
+                            text = "✕",
+                            color = Color.White,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    PokedexThemeEnum.entries.forEach { theme ->
+                        val isSelected = theme == selectedTheme
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp)
+                                .clickable { onThemeSelected(theme) },
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (isSelected) PokemonYellow else Color.White.copy(alpha = 0.90f)
+                            ),
+                            border = if (isSelected) BorderStroke(2.dp, PokedexCyanAccent) else null
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .clip(CircleShape)
+                                            .background(theme.frameColor)
+                                    )
+                                    Text(
+                                        text = theme.displayName,
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isSelected) PokemonBlueDark else Color.Black
+                                    )
+                                }
+
+                                if (isSelected) {
+                                    Text(
+                                        text = "✓ Ativo",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = PokemonBlueDark
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }

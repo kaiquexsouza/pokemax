@@ -2,11 +2,14 @@ package com.example.pokemax
 
 import android.os.Build
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -16,6 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
@@ -61,8 +65,7 @@ fun PokemonCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val primaryType = pokemon.details?.primaryType
-    val typeColor = getPokemonTypeColor(primaryType)
+    val typeBrush = getPokemonTypeBrush(pokemon.details?.types)
 
     Card(
         modifier = modifier
@@ -85,12 +88,18 @@ fun PokemonCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "#${pokemon.id}",
-                    color = Color.DarkGray,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = Color.Black.copy(alpha = 0.08f)
+                ) {
+                    Text(
+                        text = "#${pokemon.id}",
+                        color = Color.DarkGray,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
 
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -129,7 +138,7 @@ fun PokemonCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(10.dp))
-                    .background(typeColor)
+                    .background(typeBrush)
                     .padding(vertical = 6.dp, horizontal = 4.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -151,10 +160,20 @@ fun PokemonDetailHeader(
     pokemon: PokemonDetail,
     isShiny: Boolean,
     onToggleShiny: () -> Unit,
+    onPlayCry: () -> Unit,
     onBackClicked: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val typeColor = getPokemonTypeColor(pokemon.primaryType)
+    val typeBrush = getPokemonTypeBrush(pokemon.types)
+    val scrimBrush = remember {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.Black.copy(alpha = 0.25f),
+                Color.Transparent,
+                Color.Black.copy(alpha = 0.25f)
+            )
+        )
+    }
     val context = LocalContext.current
 
     val activeGifUrl = if (isShiny) pokemon.shinyAnimatedGifUrl else pokemon.animatedGifUrl
@@ -180,7 +199,8 @@ fun PokemonDetailHeader(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp))
-            .background(typeColor)
+            .background(typeBrush)
+            .background(scrimBrush)
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -189,18 +209,30 @@ fun PokemonDetailHeader(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            IconButton(
+            Surface(
                 onClick = onBackClicked,
-                modifier = Modifier
-                    .clip(CircleShape)
-                    .background(Color.White)
+                shape = RoundedCornerShape(20.dp),
+                color = Color.Black.copy(alpha = 0.25f),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.35f))
             ) {
-                Text(
-                    text = "←",
-                    color = Color.Black,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Voltar",
+                        tint = Color.White,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = "Voltar",
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
 
             Text(
@@ -210,12 +242,19 @@ fun PokemonDetailHeader(
                 color = Color.White
             )
 
-            Text(
-                text = pokemon.formattedId,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White.copy(alpha = 0.8f)
-            )
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = Color.Black.copy(alpha = 0.25f),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f))
+            ) {
+                Text(
+                    text = pokemon.formattedId,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -226,6 +265,28 @@ fun PokemonDetailHeader(
                 .padding(horizontal = 8.dp),
             contentAlignment = Alignment.Center
         ) {
+            Surface(
+                onClick = onPlayCry,
+                shape = RoundedCornerShape(20.dp),
+                color = Color.Black.copy(alpha = 0.30f),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.35f)),
+                modifier = Modifier.align(Alignment.BottomStart)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(text = "🔊", fontSize = 13.sp)
+                    Text(
+                        text = "Ouvir",
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
             AsyncImage(
                 model = currentImageModel,
                 contentDescription = pokemon.name,
@@ -237,18 +298,31 @@ fun PokemonDetailHeader(
                 modifier = Modifier.size(170.dp)
             )
 
-            IconButton(
+            Surface(
                 onClick = onToggleShiny,
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .clip(CircleShape)
-                    .background(if (isShiny) Color(0xFFFFD700) else Color.White)
-                    .size(42.dp)
+                shape = RoundedCornerShape(20.dp),
+                color = if (isShiny) Color(0xFFFFD700) else Color.Black.copy(alpha = 0.30f),
+                border = BorderStroke(1.dp, if (isShiny) Color(0xFFFFD700) else Color.White.copy(alpha = 0.35f)),
+                modifier = Modifier.align(Alignment.BottomEnd)
             ) {
-                Text(
-                    text = "✦",
-                    fontSize = 20.sp
-                )
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = "✦",
+                        fontSize = 14.sp,
+                        color = if (isShiny) Color.Black else Color.White,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Shiny",
+                        color = if (isShiny) Color.Black else Color.White,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
 
@@ -300,6 +374,7 @@ fun PokemonDetailHeader(
 @Composable
 fun PokedexDescriptionCard(
     descriptions: List<String>,
+    onSpeakDescription: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     if (descriptions.isEmpty()) return
@@ -323,12 +398,24 @@ fun PokedexDescriptionCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "DESCRIÇÃO DA POKÉDEX",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = "DESCRIÇÃO DA POKÉDEX",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    IconButton(
+                        onClick = { onSpeakDescription(descriptions[safeIndex]) },
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Text(text = "🗣️", fontSize = 14.sp)
+                    }
+                }
 
                 if (total > 1) {
                     Row(
@@ -752,5 +839,103 @@ fun PokemonLoadingIndicator(
         contentDescription = "Carregando...",
         modifier = modifier.size(size)
     )
+}
+
+@Composable
+fun TypeEffectivenessCard(
+    types: List<PokemonTypeSlot>,
+    modifier: Modifier = Modifier
+) {
+    val effectiveness = remember(types) { calculateTypeEffectiveness(types) }
+
+    val hasWeakness = effectiveness.quadWeaknesses.isNotEmpty() || effectiveness.doubleWeaknesses.isNotEmpty()
+    val hasResistance = effectiveness.quadResistances.isNotEmpty() || effectiveness.doubleResistances.isNotEmpty()
+    val hasImmunity = effectiveness.immunities.isNotEmpty()
+
+    if (!hasWeakness && !hasResistance && !hasImmunity) return
+
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.90f))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                text = "EFETIVIDADE DE TIPOS",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            if (effectiveness.quadWeaknesses.isNotEmpty()) {
+                TypeMultiplierGroup(
+                    label = "Fraqueza Dupla (4x)",
+                    labelColor = Color(0xFFD32F2F),
+                    types = effectiveness.quadWeaknesses
+                )
+            }
+
+            if (effectiveness.doubleWeaknesses.isNotEmpty()) {
+                TypeMultiplierGroup(
+                    label = "Fraqueza (2x)",
+                    labelColor = Color(0xFFE53935),
+                    types = effectiveness.doubleWeaknesses
+                )
+            }
+
+            if (effectiveness.doubleResistances.isNotEmpty()) {
+                TypeMultiplierGroup(
+                    label = "Resistência (0.5x)",
+                    labelColor = Color(0xFF2E7D32),
+                    types = effectiveness.doubleResistances
+                )
+            }
+
+            if (effectiveness.quadResistances.isNotEmpty()) {
+                TypeMultiplierGroup(
+                    label = "Resistência Dupla (0.25x)",
+                    labelColor = Color(0xFF1B5E20),
+                    types = effectiveness.quadResistances
+                )
+            }
+
+            if (effectiveness.immunities.isNotEmpty()) {
+                TypeMultiplierGroup(
+                    label = "Imunidade (0x)",
+                    labelColor = Color(0xFF455A64),
+                    types = effectiveness.immunities
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TypeMultiplierGroup(
+    label: String,
+    labelColor: Color,
+    types: List<String>
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            color = labelColor
+        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            types.forEach { typeName ->
+                PokemonTypeBadge(typeName = typeName, fontSize = 10)
+            }
+        }
+    }
 }
 

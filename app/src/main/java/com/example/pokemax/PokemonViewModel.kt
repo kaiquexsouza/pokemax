@@ -4,6 +4,7 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -70,6 +71,15 @@ class PokemonViewModel(
     private val _isShiny = mutableStateOf(false)
     val isShiny: State<Boolean> = _isShiny
 
+    private val _isQuizOpen = mutableStateOf(false)
+    val isQuizOpen: State<Boolean> = _isQuizOpen
+
+    private val _selectedTheme = mutableStateOf(PokedexThemeEnum.RED_CLASSIC)
+    val selectedTheme: State<PokedexThemeEnum> = _selectedTheme
+
+    private val _isThemeSelectorOpen = mutableStateOf(false)
+    val isThemeSelectorOpen: State<Boolean> = _isThemeSelectorOpen
+
     private val _uiState = mutableStateOf<PokemonUiState>(PokemonUiState.Loading)
     val uiState: State<PokemonUiState> = _uiState
 
@@ -81,9 +91,18 @@ class PokemonViewModel(
 
     private var listJob: Job? = null
     private var detailJob: Job? = null
+    private var themeManager: PokedexThemeManager? = null
 
     init {
         loadPokemonList()
+    }
+
+    fun initThemeManager(context: android.content.Context) {
+        if (themeManager == null) {
+            val manager = PokedexThemeManager(context)
+            themeManager = manager
+            _selectedTheme.value = manager.savedTheme
+        }
     }
 
     fun performLogin(usernameOrEmail: String, password: String) {
@@ -97,6 +116,28 @@ class PokemonViewModel(
 
     fun logout() {
         _isLoggedIn.value = false
+    }
+
+    fun openQuiz() {
+        _isQuizOpen.value = true
+    }
+
+    fun closeQuiz() {
+        _isQuizOpen.value = false
+    }
+
+    fun selectTheme(theme: PokedexThemeEnum) {
+        _selectedTheme.value = theme
+        _isThemeSelectorOpen.value = false
+        themeManager?.savedTheme = theme
+    }
+
+    fun openThemeSelector() {
+        _isThemeSelectorOpen.value = true
+    }
+
+    fun closeThemeSelector() {
+        _isThemeSelectorOpen.value = false
     }
 
     fun toggleShiny() {
@@ -226,7 +267,7 @@ class PokemonViewModel(
                     _detailUiState.value = PokemonDetailUiState.Success(data = fullData)
                 }
             } catch (e: Exception) {
-                if (_detailUiState.value !is PokemonDetailUiState.Success) {
+                if (e !is CancellationException && _detailUiState.value !is PokemonDetailUiState.Success) {
                     _detailUiState.value = PokemonDetailUiState.Error(e.localizedMessage ?: "Erro ao carregar detalhes")
                 }
             }
@@ -260,6 +301,8 @@ class PokemonViewModel(
     }
 
     fun clearPokemonDetail() {
+        detailJob?.cancel()
+        detailJob = null
         _detailUiState.value = PokemonDetailUiState.Idle
     }
 }
